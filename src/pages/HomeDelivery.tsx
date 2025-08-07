@@ -145,7 +145,7 @@ const BuyForMe = () => {
                         <div className="flex items-center space-x-3">
                           {request.product_image_path && (
                             <img 
-                              src={`http://127.0.0.1:8000/storage/${request.product_image_path}`} 
+                              src={`https://api.obourexpress.com/storage/${request.product_image_path}`} 
                               alt={request.product_name}
                               className="w-12 h-12 rounded-lg object-cover bg-muted"
                             />
