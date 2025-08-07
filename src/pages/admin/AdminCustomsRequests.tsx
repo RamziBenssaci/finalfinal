@@ -174,7 +174,7 @@ const AdminCustomsRequests = () => {
                       <div className="flex items-start space-x-3">
                         {request.product_image_path && (
                           <img 
-                            src={`http://127.0.0.1:8000/storage/${request.product_image_path}`} 
+                            src={`https://api.obourexpress.com/storage/${request.product_image_path}`} 
                             alt={request.product_name}
                             className="w-16 h-16 rounded-lg object-cover bg-muted flex-shrink-0"
                           />
