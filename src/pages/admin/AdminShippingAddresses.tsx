@@ -52,6 +52,10 @@ export default function AdminShippingAddresses() {
     { id: 8, title: "Turkey", icon: Flag },
     { id: 9, title: "United Arab Emirates - Air", icon: Plane },
     { id: 10, title: "United Arab Emirates - Sea", icon: Ship },
+    { id: 11, title: "United States", icon: Flag },
+    { id: 12, title: "United Kingdom", icon: Flag },
+    { id: 13, title: "United States - Sea", icon: Ship },
+
   ];
 
   const { data: addressesResponse, isLoading } = useQuery({
