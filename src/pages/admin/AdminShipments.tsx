@@ -249,25 +249,53 @@ export default function AdminShipments() {
                      <TableCell>{getStatusBadge(shipment.status)}</TableCell>
                      <TableCell className="font-mono text-sm">{shipment.tracking_number}</TableCell>
                      <TableCell>{new Date(shipment.created_at).toLocaleDateString()}</TableCell>
-                     <TableCell>
-                       {shipment.status !== "arrived" && (
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => handleMarkArrived(shipment.id)}
-                           disabled={updateStatusMutation.isPending}
-                           className="flex items-center gap-1"
-                         >
-                           <Check className="h-3 w-3" />
-                           {updateStatusMutation.isPending ? "Updating..." : "Mark Arrived"}
-                         </Button>
-                       )}
-                       {shipment.status === "arrived" && shipment.arrived_at && (
-                         <span className="text-sm text-green-600">
-                           Arrived: {new Date(shipment.arrived_at).toLocaleDateString()}
-                         </span>
-                       )}
-                     </TableCell>
+                    <TableCell className="space-y-1">
+  {shipment.status !== "arrived" && (
+    <div className="flex flex-col gap-1">
+      {shipment.status !== "shipped" && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => updateStatusMutation.mutate({ packageId: shipment.id, status: "shipped" })}
+          disabled={updateStatusMutation.isPending}
+          className="flex items-center gap-1"
+        >
+          <Package className="h-3 w-3" />
+          {updateStatusMutation.isPending ? "Updating..." : "Mark Shipped"}
+        </Button>
+      )}
+
+      {shipment.status !== "close_to_arrival" && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => updateStatusMutation.mutate({ packageId: shipment.id, status: "close_to_arrival" })}
+          disabled={updateStatusMutation.isPending}
+          className="flex items-center gap-1"
+        >
+          <Check className="h-3 w-3 text-yellow-600" />
+          {updateStatusMutation.isPending ? "Updating..." : "Mark Close to Arrival"}
+        </Button>
+      )}
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleMarkArrived(shipment.id)}
+        disabled={updateStatusMutation.isPending}
+        className="flex items-center gap-1"
+      >
+        <Check className="h-3 w-3 text-green-600" />
+        {updateStatusMutation.isPending ? "Updating..." : "Mark Arrived"}
+      </Button>
+    </div>
+  )}
+  {shipment.status === "arrived" && shipment.arrived_at && (
+    <span className="text-sm text-green-600">
+      Arrived: {new Date(shipment.arrived_at).toLocaleDateString()}
+    </span>
+  )}
+</TableCell>
                    </TableRow>
                  ))}
               </TableBody>
@@ -327,26 +355,60 @@ export default function AdminShipments() {
                   <p className="font-mono text-sm">{shipment.tracking_number}</p>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Created: {new Date(shipment.created_at).toLocaleDateString()}</p>
-                    {shipment.status === "arrived" && shipment.arrived_at && (
-                      <p className="text-sm text-green-600">Arrived: {new Date(shipment.arrived_at).toLocaleDateString()}</p>
-                    )}
-                  </div>
-                  {shipment.status !== "arrived" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleMarkArrived(shipment.id)}
-                      disabled={updateStatusMutation.isPending}
-                      className="flex items-center gap-1"
-                    >
-                      <Check className="h-3 w-3" />
-                      {updateStatusMutation.isPending ? "Updating..." : "Mark Arrived"}
-                    </Button>
-                  )}
-                </div>
+              <div className="flex justify-between items-center pt-2 border-t">
+  <div>
+    <p className="text-sm text-muted-foreground">
+      Created: {new Date(shipment.created_at).toLocaleDateString()}
+    </p>
+    {shipment.status === "arrived" && shipment.arrived_at && (
+      <p className="text-sm text-green-600">
+        Arrived: {new Date(shipment.arrived_at).toLocaleDateString()}
+      </p>
+    )}
+  </div>
+
+  {shipment.status !== "arrived" && (
+    <div className="flex flex-col gap-1 items-end">
+      {shipment.status !== "shipped" && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => updateStatusMutation.mutate({ packageId: shipment.id, status: "shipped" })}
+          disabled={updateStatusMutation.isPending}
+          className="flex items-center gap-1"
+        >
+          <Package className="h-3 w-3" />
+          {updateStatusMutation.isPending ? "Updating..." : "Mark Shipped"}
+        </Button>
+      )}
+
+      {shipment.status !== "close_to_arrival" && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => updateStatusMutation.mutate({ packageId: shipment.id, status: "close_to_arrival" })}
+          disabled={updateStatusMutation.isPending}
+          className="flex items-center gap-1"
+        >
+          <Check className="h-3 w-3 text-yellow-600" />
+          {updateStatusMutation.isPending ? "Updating..." : "Mark Close to Arrival"}
+        </Button>
+      )}
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleMarkArrived(shipment.id)}
+        disabled={updateStatusMutation.isPending}
+        className="flex items-center gap-1"
+      >
+        <Check className="h-3 w-3 text-green-600" />
+        {updateStatusMutation.isPending ? "Updating..." : "Mark Arrived"}
+      </Button>
+    </div>
+  )}
+</div>
+
               </div>
             </CardContent>
           </Card>
