@@ -1,419 +1,255 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Package, Search, Check } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiService } from "@/services/api";
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Save, Edit } from 'lucide-react';
 
-interface PackageShipment {
+interface Asset {
   id: string;
-  packageId: string;
-  clientId: string;
-  clientName: string;
-  clientEmail: string;
-  description: string;
-  country: string;
-  shippingMethod: string;
-  weight: number;
-  price: number;
-  status: "pending" | "shipped" | "arrived";
-  trackingNumber: string;
-  createdAt: string;
-  arrivedAt?: string;
+  deviceName: string;
+  serialNumber: string;
+  facilityName: string;
+  supplierName: string;
+  supplierContact: string;
+  supplierEmail: string;
+  deviceModel: string;
+  deliveryDate: string;
+  installationDate: string;
+  warrantyPeriod: number;
+  deviceStatus: string;
+  notes: string;
+  warrantyStatus?: string;
+  malfunctionCount?: number;
+  outOfWarrantyDays?: number;
 }
 
-export default function AdminShipments() {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState("");
+interface Facility {
+  id: string;
+  name: string;
+}
 
-  // Verify admin authentication
-  useEffect(() => {
-    const verifyAuth = async () => {
-      const token = localStorage.getItem('adminToken');
-      if (!token) {
-        navigate('/admin/login');
-        return;
-      }
+interface EditAssetDialogProps {
+  asset: Asset;
+  onSave: (asset: Asset) => void;
+  facilities: Facility[];
+}
 
-      try {
-        const response = await fetch('/admin/auth/verify', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminUser');
-          navigate('/admin/login');
-        }
-      } catch (error) {
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
-        navigate('/admin/login');
-      }
-    };
-
-    verifyAuth();
-  }, [navigate]);
-
-  // Fetch all shipments
-  const { data: shipments = [], isLoading } = useQuery({
-    queryKey: ['admin-shipments'],
-    queryFn: () => ApiService.getAllShipments().then(res => res.data)
+export default function EditAssetDialog({ asset, onSave, facilities }: EditAssetDialogProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    deviceName: asset.deviceName || '',
+    serialNumber: asset.serialNumber || '',
+    facilityName: asset.facilityName || '',
+    supplierName: asset.supplierName || '',
+    supplierContact: asset.supplierContact || '',
+    supplierEmail: asset.supplierEmail || '',
+    deviceModel: asset.deviceModel || '',
+    deliveryDate: asset.deliveryDate || '',
+    installationDate: asset.installationDate || '',
+    warrantyPeriod: asset.warrantyPeriod || 1,
+    deviceStatus: asset.deviceStatus || 'يعمل',
+    notes: asset.notes || ''
   });
 
-  // Update package status mutation
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ packageId, status }: { packageId: number, status: string }) => 
-      ApiService.updatePackageStatus(packageId, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-shipments'] });
-      toast({
-        title: "Success",
-        description: "Package status updated successfully"
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update package status",
-        variant: "destructive"
-      });
-    }
-  });
-
-  const filteredShipments = shipments.filter((shipment: any) =>
-    shipment.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    shipment.package_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    shipment.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    shipment.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleMarkArrived = (packageId: number) => {
-    updateStatusMutation.mutate({ packageId, status: "arrived" });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedAsset = { ...asset, ...formData };
+    onSave(updatedAsset);
+    setIsOpen(false);
+    console.log('Asset updated:', updatedAsset);
   };
-
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      pending: "secondary",
-      shipped: "default",
-      arrived: "default"
-    } as const;
-
-    const colors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      shipped: "bg-blue-100 text-blue-800",
-      arrived: "bg-green-100 text-green-800"
-    };
-
-    return (
-      <Badge 
-        variant={variants[status as keyof typeof variants]} 
-        className={colors[status as keyof typeof colors]}
-      >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  };
-
-  const getShipmentStats = () => {
-    const total = shipments.length;
-    const pending = shipments.filter(s => s.status === "pending").length;
-    const shipped = shipments.filter(s => s.status === "shipped").length;
-    const arrived = shipments.filter(s => s.status === "arrived").length;
-
-    return { total, pending, shipped, arrived };
-  };
-
-  const stats = getShipmentStats();
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Package Shipments</h1>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Package className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Total</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <button className="group bg-gradient-to-r from-warning to-warning/80 hover:from-warning/80 hover:to-warning text-warning-foreground p-2 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md">
+          <Edit size={16} />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-background to-accent/20" dir="rtl">
+        <DialogHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-4 -m-6 mb-6 rounded-t-lg">
+          <DialogTitle className="text-right text-xl font-bold flex items-center gap-2">
+            <Edit className="h-5 w-5" />
+            تعديل الأصل
+          </DialogTitle>
+        </DialogHeader>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div>
-                <p className="text-sm font-medium">Pending</p>
-                <p className="text-2xl font-bold">{stats.pending}</p>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Professional Section Header */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 text-right mb-4">المعلومات الأساسية للجهاز</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-blue-800 dark:text-blue-200 text-right">اسم الجهاز *</label>
+                <input
+                  type="text"
+                  value={formData.deviceName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deviceName: e.target.value }))}
+                  className="w-full p-3 border-2 border-blue-200 dark:border-blue-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  placeholder="اسم الجهاز"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-blue-800 dark:text-blue-200 text-right">الرقم التسلسلي *</label>
+                <input
+                  type="text"
+                  value={formData.serialNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+                  className="w-full p-3 border-2 border-blue-200 dark:border-blue-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  placeholder="الرقم التسلسلي"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-blue-800 dark:text-blue-200 text-right">اسم المنشأة *</label>
+                <select
+                  value={formData.facilityName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, facilityName: e.target.value }))}
+                  className="w-full p-3 border-2 border-blue-200 dark:border-blue-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  required
+                >
+                  <option value="">اختر المنشأة</option>
+                  {facilities.map(facility => (
+                    <option key={facility.id} value={facility.name}>{facility.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-              <div>
-                <p className="text-sm font-medium">Shipped</p>
-                <p className="text-2xl font-bold">{stats.shipped}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Check className="h-4 w-4 text-green-600" />
-              <div>
-                <p className="text-sm font-medium">Arrived</p>
-                <p className="text-2xl font-bold">{stats.arrived}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search by client name, package ID, tracking number, or description..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Shipments Table - Desktop */}
-      <Card className="hidden md:block">
-        <CardHeader>
-          <CardTitle>All Package Shipments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Package ID</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Country</TableHead>
-                  <TableHead>Shipping Method</TableHead>
-                  <TableHead>Weight</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Tracking</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                 {filteredShipments.map((shipment: any) => (
-                   <TableRow key={shipment.id}>
-                     <TableCell className="font-medium">{shipment.package_id || shipment.id}</TableCell>
-                     <TableCell>
-                       <div>
-                         <p className="font-medium">{shipment.client_name}</p>
-                         <p className="text-sm text-muted-foreground">{shipment.client_email}</p>
-                       </div>
-                     </TableCell>
-                     <TableCell>{shipment.description}</TableCell>
-                     <TableCell>{shipment.country}</TableCell>
-                     <TableCell>{shipment.shipping_method || 'Standard'}</TableCell>
-                     <TableCell>{shipment.weight} kg</TableCell>
-                     <TableCell>${shipment.price}</TableCell>
-                     <TableCell>{getStatusBadge(shipment.status)}</TableCell>
-                     <TableCell className="font-mono text-sm">{shipment.tracking_number}</TableCell>
-                     <TableCell>{new Date(shipment.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell className="space-y-1">
-  {shipment.status !== "arrived" && (
-    <div className="flex flex-col gap-1">
-      {shipment.status !== "shipped" && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => updateStatusMutation.mutate({ packageId: shipment.id, status: "shipped" })}
-          disabled={updateStatusMutation.isPending}
-          className="flex items-center gap-1"
-        >
-          <Package className="h-3 w-3" />
-          {updateStatusMutation.isPending ? "Updating..." : "Mark Shipped"}
-        </Button>
-      )}
-
-      {shipment.status !== "close_to_arrival" && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => updateStatusMutation.mutate({ packageId: shipment.id, status: "close_to_arrival" })}
-          disabled={updateStatusMutation.isPending}
-          className="flex items-center gap-1"
-        >
-          <Check className="h-3 w-3 text-yellow-600" />
-          {updateStatusMutation.isPending ? "Updating..." : "Mark Close to Arrival"}
-        </Button>
-      )}
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handleMarkArrived(shipment.id)}
-        disabled={updateStatusMutation.isPending}
-        className="flex items-center gap-1"
-      >
-        <Check className="h-3 w-3 text-green-600" />
-        {updateStatusMutation.isPending ? "Updating..." : "Mark Arrived"}
-      </Button>
-    </div>
-  )}
-  {shipment.status === "arrived" && shipment.arrived_at && (
-    <span className="text-sm text-green-600">
-      Arrived: {new Date(shipment.arrived_at).toLocaleDateString()}
-    </span>
-  )}
-</TableCell>
-                   </TableRow>
-                 ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Shipments Cards - Mobile */}
-      <div className="md:hidden space-y-4">
-        {filteredShipments.map((shipment: any) => (
-          <Card key={shipment.id}>
-            <CardContent className="p-4">
-              <div className="space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium text-sm text-muted-foreground">Package ID</p>
-                    <p className="font-bold">{shipment.package_id || shipment.id}</p>
-                  </div>
-                  <div className="text-right">
-                    {getStatusBadge(shipment.status)}
-                  </div>
-                </div>
-                
-                <div>
-                  <p className="font-medium text-sm text-muted-foreground">Client</p>
-                  <p className="font-medium">{shipment.client_name}</p>
-                  <p className="text-sm text-muted-foreground">{shipment.client_email}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="font-medium text-sm text-muted-foreground">Country</p>
-                    <p>{shipment.country}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm text-muted-foreground">Weight</p>
-                    <p>{shipment.weight} kg</p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm text-muted-foreground">Price</p>
-                    <p>${shipment.price}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm text-muted-foreground">Method</p>
-                    <p>{shipment.shipping_method || 'Standard'}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="font-medium text-sm text-muted-foreground">Description</p>
-                  <p>{shipment.description}</p>
-                </div>
-
-                <div>
-                  <p className="font-medium text-sm text-muted-foreground">Tracking Number</p>
-                  <p className="font-mono text-sm">{shipment.tracking_number}</p>
-                </div>
-
-              <div className="flex justify-between items-center pt-2 border-t">
-  <div>
-    <p className="text-sm text-muted-foreground">
-      Created: {new Date(shipment.created_at).toLocaleDateString()}
-    </p>
-    {shipment.status === "arrived" && shipment.arrived_at && (
-      <p className="text-sm text-green-600">
-        Arrived: {new Date(shipment.arrived_at).toLocaleDateString()}
-      </p>
-    )}
-  </div>
-
-  {shipment.status !== "arrived" && (
-    <div className="flex flex-col gap-1 items-end">
-      {shipment.status !== "shipped" && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => updateStatusMutation.mutate({ packageId: shipment.id, status: "shipped" })}
-          disabled={updateStatusMutation.isPending}
-          className="flex items-center gap-1"
-        >
-          <Package className="h-3 w-3" />
-          {updateStatusMutation.isPending ? "Updating..." : "Mark Shipped"}
-        </Button>
-      )}
-
-      {shipment.status !== "close_to_arrival" && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => updateStatusMutation.mutate({ packageId: shipment.id, status: "close_to_arrival" })}
-          disabled={updateStatusMutation.isPending}
-          className="flex items-center gap-1"
-        >
-          <Check className="h-3 w-3 text-yellow-600" />
-          {updateStatusMutation.isPending ? "Updating..." : "Mark Close to Arrival"}
-        </Button>
-      )}
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handleMarkArrived(shipment.id)}
-        disabled={updateStatusMutation.isPending}
-        className="flex items-center gap-1"
-      >
-        <Check className="h-3 w-3 text-green-600" />
-        {updateStatusMutation.isPending ? "Updating..." : "Mark Arrived"}
-      </Button>
-    </div>
-  )}
-</div>
-
+          {/* Supplier Information Section */}
+          <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+            <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 text-right mb-4">معلومات الشركة الموردة</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-green-800 dark:text-green-200 text-right">اسم الشركة الموردة</label>
+                <input
+                  type="text"
+                  value={formData.supplierName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, supplierName: e.target.value }))}
+                  className="w-full p-3 border-2 border-green-200 dark:border-green-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  placeholder="اسم الشركة"
+                />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-green-800 dark:text-green-200 text-right">رقم المسؤول بالشركة</label>
+                <input
+                  type="text"
+                  value={formData.supplierContact}
+                  onChange={(e) => setFormData(prev => ({ ...prev, supplierContact: e.target.value }))}
+                  className="w-full p-3 border-2 border-green-200 dark:border-green-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  placeholder="رقم الهاتف"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-green-800 dark:text-green-200 text-right">إيميل المسؤول</label>
+                <input
+                  type="email"
+                  value={formData.supplierEmail}
+                  onChange={(e) => setFormData(prev => ({ ...prev, supplierEmail: e.target.value }))}
+                  className="w-full p-3 border-2 border-green-200 dark:border-green-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  placeholder="البريد الإلكتروني"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Device Technical Details */}
+          <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+            <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100 text-right mb-4">التفاصيل التقنية والزمنية</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-purple-800 dark:text-purple-200 text-right">موديل الجهاز</label>
+                <input
+                  type="text"
+                  value={formData.deviceModel}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deviceModel: e.target.value }))}
+                  className="w-full p-3 border-2 border-purple-200 dark:border-purple-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                  placeholder="الموديل"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-purple-800 dark:text-purple-200 text-right">تاريخ التوريد</label>
+                <input
+                  type="date"
+                  value={formData.deliveryDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deliveryDate: e.target.value }))}
+                  className="w-full p-3 border-2 border-purple-200 dark:border-purple-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-purple-800 dark:text-purple-200 text-right">تاريخ التركيب</label>
+                <input
+                  type="date"
+                  value={formData.installationDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, installationDate: e.target.value }))}
+                  className="w-full p-3 border-2 border-purple-200 dark:border-purple-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-purple-800 dark:text-purple-200 text-right">مدة الضمان (سنوات)</label>
+                <select
+                  value={formData.warrantyPeriod}
+                  onChange={(e) => setFormData(prev => ({ ...prev, warrantyPeriod: parseInt(e.target.value) || 1 }))}
+                  className="w-full p-3 border-2 border-purple-200 dark:border-purple-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                >
+                  <option value="">اختر المدة</option>
+                  {[1,2,3,4,5,6,7,8,9,10].map(year => (
+                    <option key={year} value={year}>{year} {year === 1 ? 'سنة' : 'سنوات'}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Status and Notes */}
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+            <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100 text-right mb-4">الحالة والملاحظات</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-orange-800 dark:text-orange-200 text-right">حالة الجهاز</label>
+                <select
+                  value={formData.deviceStatus}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deviceStatus: e.target.value }))}
+                  className="w-full p-3 border-2 border-orange-200 dark:border-orange-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
+                >
+                  <option value="يعمل">يعمل</option>
+                  <option value="مكهن">مكهن (خارج الخدمة)</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-orange-800 dark:text-orange-200 text-right">ملاحظات الجهاز</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full p-3 border-2 border-orange-200 dark:border-orange-700 rounded-lg text-right bg-white dark:bg-gray-800 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all resize-none"
+                  rows={4}
+                  placeholder="ملاحظات إضافية..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4 justify-start pt-4 border-t border-border">
+            <Button 
+              type="submit" 
+              className="bg-gradient-to-r from-success to-success/80 hover:from-success/80 hover:to-success text-success-foreground shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+            >
+              <Save size={20} className="ml-2" />
+              حفظ التغييرات
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsOpen(false)}
+              className="border-2 hover:bg-muted transition-all"
+            >
+              إلغاء
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
