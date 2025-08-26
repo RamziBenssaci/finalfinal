@@ -1,7 +1,4 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import { ApiService } from "@/services/api";
-import { toast } from "@/hooks/use-toast";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -12,28 +9,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Fake authentication check (always true)
     const checkAuth = async () => {
-      const token = localStorage.getItem('auth_token');
-      
-   
-
-      try {
-        await ApiService.verifyClientAuth();
-        setIsAuthenticated(true);
-      } catch (error) {
-         setIsAuthenticated(true);
-        // Remove invalid token
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
-        setIsAuthenticated(false);
-        toast({
-          title: "Session expired",
-          description: "Please log in again",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      // simulate small delay so spinner still shows briefly
+      await new Promise((resolve) => setTimeout(resolve, 300)); 
+      setIsAuthenticated(true);
+      setIsLoading(false);
     };
 
     checkAuth();
@@ -47,9 +28,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+  // Always allow access since auth is forced true
   return <>{children}</>;
 }
