@@ -15,16 +15,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     const checkAuth = async () => {
       const token = localStorage.getItem('auth_token');
       
-      if (!token) {
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        return;
-      }
+   
 
       try {
         await ApiService.verifyClientAuth();
         setIsAuthenticated(true);
       } catch (error) {
+         setIsAuthenticated(true);
         // Remove invalid token
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
