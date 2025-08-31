@@ -35,6 +35,9 @@ interface EditAssetDialogProps {
 
 export default function EditAssetDialog({ asset, onSave, facilities }: EditAssetDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+    if (!asset) {
+    return null;
+  }
   const [formData, setFormData] = useState({
     deviceName: asset.deviceName || '',
     serialNumber: asset.serialNumber || '',
