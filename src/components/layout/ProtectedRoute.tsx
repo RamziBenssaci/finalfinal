@@ -9,12 +9,28 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Fake authentication check (always true)
     const checkAuth = async () => {
-      // simulate small delay so spinner still shows briefly
-      await new Promise((resolve) => setTimeout(resolve, 300)); 
-      setIsAuthenticated(true);
-      setIsLoading(false);
+      try {
+        const response = await fetch("/api/auth/verify", {
+          method: "GET",
+          credentials: "include", // include cookies/session
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setIsAuthenticated(data.authenticated === true);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     checkAuth();
@@ -28,6 +44,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Always allow access since auth is forced true
+  if (!isAuthenticated) {
+    window.location.href = "/login";
+    return null;
+  }
+
   return <>{children}</>;
 }
