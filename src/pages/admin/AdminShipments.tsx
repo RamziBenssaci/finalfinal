@@ -28,7 +28,7 @@ interface Facility {
 }
 
 interface EditAssetDialogProps {
-  asset: Asset;
+  asset: Asset | null | undefined;
   onSave: (asset: Asset) => void;
   facilities: Facility[];
 }
