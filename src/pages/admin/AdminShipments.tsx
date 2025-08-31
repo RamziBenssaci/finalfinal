@@ -250,18 +250,6 @@ className="pl-10"
 <TableCell className="font-mono text-sm">{shipment.tracking_number}</TableCell>
 <TableCell>{new Date(shipment.created_at).toLocaleDateString()}</TableCell>
                      <TableCell>
-                       {shipment.status !== "arrived" && (
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => handleMarkArrived(shipment.id)}
-                           disabled={updateStatusMutation.isPending}
-                           className="flex items-center gap-1"
-                         >
-                           <Check className="h-3 w-3" />
-                           {updateStatusMutation.isPending ? "Updating..." : "Mark Arrived"}
-                         </Button>
-                       )}
                        {shipment.status === "arrived" && shipment.arrived_at && (
                          <span className="text-sm text-green-600">
                            Arrived: {new Date(shipment.arrived_at).toLocaleDateString()}
